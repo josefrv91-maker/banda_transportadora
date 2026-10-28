@@ -19,7 +19,8 @@ limitaciones de coast y pruebas pendientes; hardware_pines.json para conexiones.
 
 ## Entrega pendiente
 
-Completar cuestionario teorico y verificacion de hardware/coast; crear repositorio
-GitHub accesible al profesor y subir commits incrementales. En Classroom solo
+El cuestionario teorico esta integrado en documentation/arquitectura.md.
+Queda pendiente la verificacion de hardware/coast. El repositorio publico es
+https://github.com/josefrv91-maker/banda_transportadora . En Classroom solo
 entregar el PDF con la URL, llamado apellido1_apellido2_nombre_proyecto1.pdf.
-No se genera ese PDF hasta tener la URL real del repositorio.
+El PDF de entrega se prepara aparte del codigo; solo contiene la URL del repositorio.
