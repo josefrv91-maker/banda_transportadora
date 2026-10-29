@@ -16,6 +16,7 @@ graph TD
     IDLE -->|START - paro liberado| RUNNING((RUNNING))
     IDLE -->|STOP - paro activo| FAULT((FAULT))
     RUNNING -->|STOP - microswitch o S serial| FAULT
+    FAULT -->|START - A serial y paro liberado| RUNNING
     IDLE -->|RESET - R serial| REBOOT[onReset: reiniciar ESP32]
     RUNNING -->|RESET - R serial| REBOOT
     FAULT -->|RESET - R serial| REBOOT
@@ -23,8 +24,8 @@ graph TD
 ```
 
 IDLE es la espera inicial con motor frenado; RUNNING aplica PWM; FAULT mantiene
-el freno hasta RESET. Soltar el microswitch no rearma ni genera START.
-START se produce una sola vez tras setup. Si el paro esta activo, STOP tiene
+el freno hasta una orden A valida o RESET. Soltar el microswitch no genera START.
+START se produce tras setup y mediante A o a por serial. Si el paro esta activo, STOP tiene
 prioridad. RESET es un reinicio completo, no un simple rearme de la FSM.
 El destino IDLE de RESET en la matriz es nominal: onReset reinicia y no retorna.
 
@@ -32,7 +33,7 @@ El destino IDLE de RESET en la matriz es nominal: onReset reinicia y no retorna.
 |---|---|---|---|---|
 | IDLE | IDLE / onNoop | RUNNING / onStart | FAULT / onFault | IDLE / onReset |
 | RUNNING | RUNNING / onNoop | RUNNING / onNoop | FAULT / onFault | IDLE / onReset |
-| FAULT | FAULT / onNoop | FAULT / onNoop | FAULT / onNoop | IDLE / onReset |
+| FAULT | FAULT / onNoop | RUNNING / onStart | FAULT / onNoop | IDLE / onReset |
 
 Cada celda contiene estado siguiente y puntero a funcion. El despacho hace un
 acceso directo O(1); las acciones no se ejecutan dentro del spinlock.
@@ -57,7 +58,11 @@ una bandera; para emergencia basta preservar al menos uno.
 loop consume primero STOP, despues RESET pendiente y finalmente START.
 STOP tambien puede solicitarse mediante S o s por serial. Se despacha por la
 misma matriz y ejecuta onFault; no reinicia el ESP32 ni sustituye el microswitch.
-Permanece en FAULT hasta RESET, incluso despues de soltar el paro fisico.
+Permanece en FAULT incluso despues de soltar el paro fisico. A o a solicita
+START sin reiniciar el ESP32. Solo se acepta con el paro liberado; una orden
+recibida con el paro presionado se descarta y no se ejecuta al soltarlo.
+onStart aplica nuevamente el duty configurado; no recupera una posicion mecanica
+ni una etapa temporal previa. R mantiene su funcion de reinicio completo.
 Solo se lee un caracter serial por vuelta para mantener trabajo acotado.
 No se usa delay ni impresion serial en la ISR. RESET es una operacion terminal
 de reinicio; no representa una accion ordinaria de tiempo constante.
@@ -98,6 +103,10 @@ hasta verificarlo con el hardware y el profesor.
 6. Verificar frecuencia/duty con osciloscopio y frenado con carga segura.
 7. Enviar S o s durante RUNNING: frena y permanece en FAULT. Enviar R o r:
    reinicia y vuelve a arrancar solo si el microswitch esta liberado.
+8. Enviar S y luego A con paro liberado: vuelve a RUNNING sin imprimir otra
+   cabecera de arranque ni reiniciar el ESP32. Probar tambien minusculas.
+9. Mantener el microswitch presionado, enviar A y soltarlo: debe seguir detenido.
+   Una nueva A con el microswitch liberado permite arrancar.
 
 El paro es gestionado por firmware: no corta fisicamente la alimentacion ni
 constituye un circuito de seguridad certificado. Una accion puede retrasarse
@@ -345,8 +354,9 @@ de variable de estado. Las acciones permanecen fuera de las secciones críticas.
 
 La compilación en VS Code fue confirmada con SUCCESS, 22064 bytes de RAM y
 278785 bytes de flash. Esto acredita generación del firmware, no las pruebas de
-motor, corriente, antirrebote o latencia. El último registro de upload compartido
-falló por ausencia de puerto detectado. No se inventan ensayos ni resultados.
+motor, corriente, antirrebote o latencia. Posteriormente se confirmo upload
+correcto y el usuario informo funcionamiento de la version inicial. Los nuevos
+comandos S y A requieren validacion fisica de esta version actualizada.
 La función coast solicitada originalmente sigue pendiente de resolver y validar;
 el documento no atribuye esa capacidad al freno implementado.
 

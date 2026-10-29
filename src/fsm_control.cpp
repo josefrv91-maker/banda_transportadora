@@ -7,6 +7,6 @@ constexpr Transition FSM[static_cast<uint8_t>(State::COUNT)]
      {State::FAULT, onFault}, {State::IDLE, onReset}},
     {{State::RUNNING, onNoop}, {State::RUNNING, onNoop},
      {State::FAULT, onFault}, {State::IDLE, onReset}},
-    {{State::FAULT, onNoop}, {State::FAULT, onNoop},
+    {{State::FAULT, onNoop}, {State::RUNNING, onStart},
      {State::FAULT, onNoop}, {State::IDLE, onReset}}
 };
