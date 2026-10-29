@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 enum class State : uint8_t { IDLE = 0, RUNNING, FAULT, COUNT };
-enum class Events : uint8_t { NONE = 0, START, STOP, RESET, COUNT };
+enum class Events : uint8_t { NONE = 0, START, STOP, RESET, REVERSE, COUNT };
 
 struct Transition {
     State nextState;
@@ -15,3 +15,4 @@ extern void onStart();
 extern void onFault();
 extern void onReset();
 extern void onNoop();
+extern void onReverse();

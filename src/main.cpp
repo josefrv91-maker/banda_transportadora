@@ -17,6 +17,7 @@ volatile bool haveLastCycle = false;
 State currentState = State::IDLE;
 bool startPending = true;
 bool resetPending = false;
+bool reverseRequested = false;
 
 void IRAM_ATTR stopISR() {
     const uint32_t now = XTHAL_GET_CCOUNT();
@@ -46,7 +47,7 @@ void setup() {
     pinMode(PIN_STOP, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_STOP), stopISR, FALLING);
     Serial.begin(115200);
-    Serial.println("Banda: A = activar. S = STOP/freno. R = RESET completo. Paro IO33.");
+    Serial.println("Banda: A = avance. D = sentido contrario. S = freno. R = reinicio. Paro IO33.");
     // START se atiende en loop; el paro tiene prioridad.
 }
 
@@ -57,7 +58,8 @@ void loop() {
         const int c = Serial.read();
         if (c == 'R' || c == 'r') resetPending = true;
         if (c == 'S' || c == 's') serialStop = true;
-        if (c == 'A' || c == 'a') startPending = true;
+        if (c == 'A' || c == 'a') { startPending = true; reverseRequested = false; }
+        if (c == 'D' || c == 'd') { startPending = true; reverseRequested = true; }
     }
 
     bool stop;
@@ -79,9 +81,14 @@ void loop() {
     } else if (startPending) {
         startPending = false;
         // Una orden con el paro presionado se descarta, no queda pendiente.
-        if (!pressed) dispatch(Events::START);
+        if (!pressed) dispatch(reverseRequested ? Events::REVERSE : Events::START);
     } else {
         dispatch(Events::NONE);
+    }
+    // STOP cancela cualquier cambio pendiente antes de actualizar la HAL.
+    if (currentState == State::RUNNING) {
+        if (digitalRead(PIN_STOP) == LOW) dispatch(Events::STOP);
+        else motorActualizar();
     }
 }
 
@@ -94,6 +101,13 @@ void onStart() {
     motorPWM(MOTOR_DUTY);
 }
 void onFault() { motorStop(); }
+void onReverse() {
+    if (digitalRead(PIN_STOP) == LOW) {
+        dispatch(Events::STOP);
+        return;
+    }
+    motorReversaPWM(MOTOR_DUTY);
+}
 void onReset() {
     motorStop();
     ESP.restart();

@@ -17,6 +17,9 @@ graph TD
     IDLE -->|STOP - paro activo| FAULT((FAULT))
     RUNNING -->|STOP - microswitch o S serial| FAULT
     FAULT -->|START - A serial y paro liberado| RUNNING
+    IDLE -->|REVERSE - D serial y paro liberado| RUNNING
+    FAULT -->|REVERSE - D serial y paro liberado| RUNNING
+    RUNNING -->|START o REVERSE - seleccion de sentido| RUNNING
     IDLE -->|RESET - R serial| REBOOT[onReset: reiniciar ESP32]
     RUNNING -->|RESET - R serial| REBOOT
     FAULT -->|RESET - R serial| REBOOT
@@ -29,11 +32,11 @@ START se produce tras setup y mediante A o a por serial. Si el paro esta activo,
 prioridad. RESET es un reinicio completo, no un simple rearme de la FSM.
 El destino IDLE de RESET en la matriz es nominal: onReset reinicia y no retorna.
 
-| Estado | NONE | START | STOP | RESET |
-|---|---|---|---|---|
-| IDLE | IDLE / onNoop | RUNNING / onStart | FAULT / onFault | IDLE / onReset |
-| RUNNING | RUNNING / onNoop | RUNNING / onNoop | FAULT / onFault | IDLE / onReset |
-| FAULT | FAULT / onNoop | RUNNING / onStart | FAULT / onNoop | IDLE / onReset |
+| Estado | NONE | START | STOP | RESET | REVERSE |
+|---|---|---|---|---|---|
+| IDLE | IDLE / onNoop | RUNNING / onStart | FAULT / onFault | IDLE / onReset | RUNNING / onReverse |
+| RUNNING | RUNNING / onNoop | RUNNING / onStart | FAULT / onFault | IDLE / onReset | RUNNING / onReverse |
+| FAULT | FAULT / onNoop | RUNNING / onStart | FAULT / onNoop | IDLE / onReset | RUNNING / onReverse |
 
 Cada celda contiene estado siguiente y puntero a funcion. El despacho hace un
 acceso directo O(1); las acciones no se ejecutan dentro del spinlock.
@@ -85,8 +88,18 @@ motorStop usa ledc_stop con nivel HIGH en ambas entradas para freno dinamico.
 motorPWM limita a 1023 y establece la entrada B baja antes de aplicar PWM a A.
 El sentido fisico depende de la polaridad de conexion del motor.
 
-La interfaz obligatoria acordada tiene motorInicial, motorPWM y motorStop.
-Retroceso y coast no se agregan silenciosamente a esta FSM de tres estados.
+La interfaz inicial motorInicial, motorPWM y motorStop se amplia para el requisito
+de inversion con motorReversaPWM y motorActualizar. D/d genera REVERSE y A/a
+genera START, seleccionando el sentido original. Ambas ordenes requieren el
+microswitch liberado. RUNNING engloba ambos sentidos y el breve frenado de cambio.
+El sentido pendiente se conserva en la HAL, no como un estado adicional de la FSM.
+La HAL aplica PWM a IO12 para avance y a IO14 para reversa, manteniendo la otra
+entrada baja. Antes de invertir frena y aguarda al menos 300 ms usando millis y
+motorActualizar, fuera de la ISR. No se bloquea el bucle. STOP cancela la orden
+pendiente e impide que se ejecute al finalizar la espera. Una nueva orden de
+sentido durante el frenado sustituye a la anterior; repetir la misma no retrasa
+indefinidamente el cambio. Los 300 ms no garantizan detencion mecanica: deben
+ajustarse con medidas de inercia y corriente. No hay sensor de velocidad.
 El enunciado original tambien solicita coast: queda pendiente confirmar la tabla
 de verdad del chip instalado y acordar una ampliacion de la interfaz. Distintas
 hojas L9110S muestran parada con ambas salidas bajas; no es correcto prometer
@@ -107,6 +120,9 @@ hasta verificarlo con el hardware y el profesor.
    cabecera de arranque ni reiniciar el ESP32. Probar tambien minusculas.
 9. Mantener el microswitch presionado, enviar A y soltarlo: debe seguir detenido.
    Una nueva A con el microswitch liberado permite arrancar.
+10. En RUNNING, enviar D: frena y arranca al contrario; A devuelve el sentido.
+11. Enviar D y enseguida S durante la espera: no debe arrancar al terminarla.
+12. Repetir la prueba anterior con el microswitch y probar D con el paro presionado.
 
 El paro es gestionado por firmware: no corta fisicamente la alimentacion ni
 constituye un circuito de seguridad certificado. Una accion puede retrasarse

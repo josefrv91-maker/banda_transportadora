@@ -13,6 +13,10 @@ Base del Proyecto 1, PlatformIO + Arduino + IdeaBoard ESP32.
    Una orden A con el microswitch presionado se descarta; soltarlo no arranca el motor.
 7. Enviar `R` o `r` para reiniciar completamente mediante evento RESET. Tras reiniciar,
    el motor arranca automaticamente si el microswitch esta liberado.
+8. Enviar `D` o `d` para el sentido contrario; `A` o `a` selecciona el original.
+   Al invertir se frena durante al menos 300 ms sin bloquear el bucle. S y el
+   microswitch cancelan tambien cualquier arranque pendiente durante esa espera.
+   El sentido horario real depende del cableado y del lado desde el que se mire.
 
 El firmware arranca automaticamente despues de inicializar si el paro esta
 liberado. El microswitch a GND en IO33 detiene con freno dinamico y enclava FAULT.
