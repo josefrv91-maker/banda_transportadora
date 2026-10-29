@@ -15,7 +15,7 @@ graph TD
     BOOT[Inicializacion] --> IDLE((IDLE))
     IDLE -->|START - paro liberado| RUNNING((RUNNING))
     IDLE -->|STOP - paro activo| FAULT((FAULT))
-    RUNNING -->|STOP - microswitch| FAULT
+    RUNNING -->|STOP - microswitch o S serial| FAULT
     IDLE -->|RESET - R serial| REBOOT[onReset: reiniciar ESP32]
     RUNNING -->|RESET - R serial| REBOOT
     FAULT -->|RESET - R serial| REBOOT
@@ -55,6 +55,9 @@ lecturas fragmentadas. Eventos STOP repetidos se fusionan intencionalmente en
 una bandera; para emergencia basta preservar al menos uno.
 
 loop consume primero STOP, despues RESET pendiente y finalmente START.
+STOP tambien puede solicitarse mediante S o s por serial. Se despacha por la
+misma matriz y ejecuta onFault; no reinicia el ESP32 ni sustituye el microswitch.
+Permanece en FAULT hasta RESET, incluso despues de soltar el paro fisico.
 Solo se lee un caracter serial por vuelta para mantener trabajo acotado.
 No se usa delay ni impresion serial en la ISR. RESET es una operacion terminal
 de reinicio; no representa una accion ordinaria de tiempo constante.
@@ -93,6 +96,8 @@ hasta verificarlo con el hardware y el profesor.
 4. Reiniciar con paro presionado: permanece en FAULT, sin impulso de motor.
 5. Repetir pulsaciones y comprobar rebote, corriente, temperatura y brownouts.
 6. Verificar frecuencia/duty con osciloscopio y frenado con carga segura.
+7. Enviar S o s durante RUNNING: frena y permanece en FAULT. Enviar R o r:
+   reinicia y vuelve a arrancar solo si el microswitch esta liberado.
 
 El paro es gestionado por firmware: no corta fisicamente la alimentacion ni
 constituye un circuito de seguridad certificado. Una accion puede retrasarse

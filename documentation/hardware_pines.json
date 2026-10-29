@@ -8,7 +8,7 @@
     {"componente": "L9110S entrada B", "pin": 14, "tipo": "output", "senal": "digital", "nota": "LEDC canal 1, mismo temporizador. Conexion interna."},
     {"componente": "Microswitch de emergencia", "pin": 33, "tipo": "input", "senal": "digital", "nota": "Contacto a GND, INPUT_PULLUP, activo LOW, ISR FALLING."},
     {"componente": "UART0 TX - monitor serial", "pin": 1, "tipo": "output", "senal": "digital", "nota": "UART del ESP32 hacia el puente USB-serie integrado. 115200 baudios."},
-    {"componente": "UART0 RX - comando RESET", "pin": 3, "tipo": "input", "senal": "digital", "nota": "Desde el puente USB-serie integrado. R o r solicita RESET."}
+    {"componente": "UART0 RX - comandos STOP y RESET", "pin": 3, "tipo": "input", "senal": "digital", "nota": "Desde el puente USB-serie integrado. S o s solicita STOP; R o r solicita RESET."}
   ],
   "alimentacion": {"selector": "SELECT-Vin", "fuente": "5 V / 3 A por conector de barril", "nota": "Seguir la guia de cableado y compartir GND. Motor DG01D en salida del puente H."}
 }

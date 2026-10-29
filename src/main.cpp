@@ -46,15 +46,17 @@ void setup() {
     pinMode(PIN_STOP, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_STOP), stopISR, FALLING);
     Serial.begin(115200);
-    Serial.println("Banda: R = RESET completo. Paro por microswitch IO33.");
+    Serial.println("Banda: S = STOP/freno. R = RESET completo. Paro por microswitch IO33.");
     // START se atiende en loop; el paro tiene prioridad.
 }
 
 void loop() {
+    bool serialStop = false;
     // Leer como maximo un caracter por vuelta: trabajo acotado.
     if (Serial.available() > 0) {
         const int c = Serial.read();
         if (c == 'R' || c == 'r') resetPending = true;
+        if (c == 'S' || c == 's') serialStop = true;
     }
 
     bool stop;
@@ -67,7 +69,7 @@ void loop() {
     portEXIT_CRITICAL(&eventMux);
 
     const bool pressed = digitalRead(PIN_STOP) == LOW;
-    if (stop || (pressed && currentState != State::FAULT)) {
+    if (serialStop || stop || (pressed && currentState != State::FAULT)) {
         startPending = false;
         dispatch(Events::STOP);
     } else if (resetPending) {
